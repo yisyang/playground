@@ -122,16 +122,21 @@ def play_games(num_games, num_decks_in_shoe=8, decks_discarded=2, num_cards_to_d
     bank_wins_for_result_signatures = {}
     ties_for_result_signatures = {}
 
+    # Play games
     while num_games > 0:
         num_games -= 1
+
+        # Re-shuffle
         if len(cards) <= decks_discarded * 13 * 4:
             result_signatures = {}
             for i in range(results_to_track_min, results_to_track_max + 1):
                 result_signatures[i] = ''
+            cards = prepare_cards(num_decks_in_shoe)
 
-        cards = prepare_cards(num_decks_in_shoe)
+        # Play game
         result = play_game(cards, num_cards_to_discard)
 
+        # Record data
         for i in range(results_to_track_min, results_to_track_max + 1):
             if len(result_signatures[i]) == i:
                 # Result signature is full and can be used.
@@ -153,14 +158,17 @@ def play_games(num_games, num_decks_in_shoe=8, decks_discarded=2, num_cards_to_d
             if len(result_signatures[i]) > i:
                 result_signatures[i] = result_signatures[i][1:]
 
+    # Analyze recorded data
     data = {}
-    titles = ['Played', 'P Wins', 'B Wins', 'Ties', 'PWR', 'BWR', 'TR']
+    titles = ['Played', 'PWR', 'BWR', 'TR']
     labels = []
     for k in games_played_for_result_signatures:
         games_played = games_played_for_result_signatures.get(k, 0)
 
-        # Results on a sample size of < 300 is probably going to be statistically insignificant.
-        if games_played < 300:
+        # A small result is going to be statistically insignificant.
+        # TODO: Implement formula for variance based on num_games
+        # TODO: Auto set results_to_track based on statistical significance
+        if games_played < 50000:
             continue
 
         player_wins = player_wins_for_result_signatures.get(k, 0)
@@ -173,10 +181,11 @@ def play_games(num_games, num_decks_in_shoe=8, decks_discarded=2, num_cards_to_d
         # You can win at least $1.6 from player or tie on betting $100.
         if player_win_ratio > 50.8 or bank_win_ratio > 53 or tie_ratio > 12.7:
             labels.append(k)
-            data[k] = [games_played, player_wins, bank_wins, ties, player_win_ratio, bank_win_ratio, tie_ratio]
+            data[k] = [games_played, player_win_ratio, bank_win_ratio, tie_ratio]
 
-    x = DataFrame(data=data, index=titles)
-    print(x)
+    # Print results
+    df = DataFrame(data=data, index=titles)
+    print(df)
 
 
-play_games(2000000, results_to_track_min=5, results_to_track_max=7)
+play_games(500000000, results_to_track_min=7, results_to_track_max=9)
