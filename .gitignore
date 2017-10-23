@@ -1,0 +1,11 @@
+# IDE
+.idea
+
+# Cache
+__pycache__
+
+# Logs
+logs
+
+# Config
+config/config.yml
