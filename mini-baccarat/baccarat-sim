@@ -189,3 +189,5 @@ def play_games(num_games, num_decks_in_shoe=8, decks_discarded=2, num_cards_to_d
 
 
 play_games(500000000, results_to_track_min=7, results_to_track_max=9)
+
+# Result is empty data... nothing with sufficient plays satisfied the meager 101.6/100 requirement.
