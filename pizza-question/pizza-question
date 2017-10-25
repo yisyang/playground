@@ -1,0 +1,130 @@
+from math import factorial
+from pandas import DataFrame
+from timeit import default_timer
+
+
+def how_many_unique_pizzas(num_toppings=3, total_toppings=26):
+    """
+    Count unique pizzas.
+
+    :param int num_toppings: Number of toppings per pizza, up to 26
+    :param int total_toppings: Number of toppings total, up to 26
+    :return: Number of unique pizzas made.
+    """
+
+    """
+    ScottY intuition for unique pizzas:
+    
+    For Pool (P) >= Toppings (T) > N,
+
+    (T toppings in P pool) question can be expanded to:
+    
+    (T-1 toppings in P-1 pool)
+      + (T-1 toppings in P-2 pool)
+      + ...
+      + (T-1 toppings in T-1 pool)
+      
+    Each statement can then be further reduced until N = P-1 or N = T-1.
+    
+    For the base case of T=1 and P>=1, answer is simply P.
+    
+    Note this is purely based on intuition, if I knew why it is the way it is 
+    then it wouldn't be called intuition.
+    
+    Also based on intuition is that we can rewrite the above logic 
+    mathematically to get an equation with exponentials and/or factorials, but 
+    that defeats the purpose of brute-forcing it with code. So naaaaa.
+    """
+
+    # We can't repeat, so impossible pizza.
+    if num_toppings > total_toppings:
+        return 0
+
+    # Obviously can't do much without toppings.
+    if total_toppings < 1:
+        return 0
+
+    # Only 1 way to do it.
+    if total_toppings == num_toppings:
+        return 1
+
+    # Let's assume cheese is not a topping,
+    # just so we can get balanced results with
+    # 0 in N vs N in N.
+    if num_toppings == 0:
+        return 1
+
+    # Base case
+    if num_toppings == 1:
+        return total_toppings
+
+    choices = 0
+    for n in range(num_toppings - 1, total_toppings):
+        choices += how_many_unique_pizzas(num_toppings - 1, n)
+
+    return choices
+
+
+def n_choose_k(n, k):
+    # Note because of limitations in calculations, the formula must be written
+    # this way as A / (B * C) and NOT A / B / C.
+    return int(factorial(n) / (factorial(k) * factorial(n - k)))
+
+
+def make_table_classic(dimensions):
+    # Let's make a table, cuz we can.
+    start_time = default_timer()
+
+    num_pool = range(0, dimensions)
+    num_choices = range(0, dimensions)
+    combos = {}
+    for p in num_pool:
+        column = []
+        for t in num_choices:
+            if p < t:
+                column.append('-')
+            else:
+                column.append(how_many_unique_pizzas(t, p))
+        combos[p] = column
+
+    # Debug execution time
+    print('Time elapsed ' + str(default_timer() - start_time))
+
+    # Print results
+    df = DataFrame(data=combos, index=num_choices)
+    print(df)
+
+    # Conclusion, turns out I was completely right when I said "n choose k".
+    # This is just a binomial distribution, what a waste of time.
+
+
+def make_table_n_choose_k(dimensions):
+    # Now that we know this is just a binomial distribution...
+    # Let's do another table with n_choose_k.
+    start_time = default_timer()
+
+    num_pool = range(0, dimensions)
+    num_choices = range(0, dimensions)
+    combos = {}
+    for p in num_pool:
+        column = []
+        for t in num_choices:
+            if p < t:
+                column.append('-')
+            else:
+                column.append(n_choose_k(p, t))
+        combos[p] = column
+
+    # Debug execution time
+    print('Time elapsed ' + str(default_timer() - start_time))
+
+    # Print results
+    df = DataFrame(data=combos, index=num_choices)
+    print(df)
+
+
+s = default_timer()
+
+print(n_choose_k(5000, 2500))
+
+print('Time elapsed ' + str(default_timer() - s))
