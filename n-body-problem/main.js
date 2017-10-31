@@ -2,7 +2,7 @@
 
 // Prepare scene
 let scene = new THREE.Scene();
-let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+let camera = new THREE.OrthographicCamera(-5000, 5000, 5000, -5000, -5000, 5000);
 camera.position.z = 2000;
 let renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
