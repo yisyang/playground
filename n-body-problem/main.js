@@ -16,7 +16,7 @@ let planetsData = {
   planet1: {
     fixed: true,
     radius: 100,
-    mass: 5000000,
+    mass: 10000000,
     color: 0xffe030,
     position: { x: 0, y: 0, z: 0 },
     velocity: { x: 0, y: 0, z: 0 },
