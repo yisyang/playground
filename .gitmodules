@@ -1,0 +1,3 @@
+[submodule "PyTorch-Style-Transfer"]
+	path = PyTorch-Style-Transfer
+	url = git@github.com:zhanghang1989/PyTorch-Style-Transfer.git
