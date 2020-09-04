@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "4DRW/XgqHoNVL82WEAXSoztZu2j175X+MLd1p9nM33anEs6LH2GH5eED4SJ+83UUFXlChdEF+9J/70U5c7azrg==",
+  "success": true,
+  "projectFilePath": "/Users/scott/code/playground/sunlight/Sunlight/Sunlight/Sunlight.iOS/Sunlight.iOS.csproj",
+  "expectedPackageFiles": [
+    "/Users/scott/.nuget/packages/newtonsoft.json/12.0.3/newtonsoft.json.12.0.3.nupkg.sha512",
+    "/Users/scott/.nuget/packages/system.collections.immutable/1.7.1/system.collections.immutable.1.7.1.nupkg.sha512",
+    "/Users/scott/.nuget/packages/xamarin.forms/4.8.0.1269/xamarin.forms.4.8.0.1269.nupkg.sha512"
+  ],
+  "logs": []
+}

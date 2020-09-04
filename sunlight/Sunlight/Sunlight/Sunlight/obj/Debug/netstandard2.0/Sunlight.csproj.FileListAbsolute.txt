@@ -1,0 +1,14 @@
+/Users/scott/code/playground/sunlight/Sunlight/Sunlight/Sunlight/bin/Debug/netstandard2.0/Sunlight.deps.json
+/Users/scott/code/playground/sunlight/Sunlight/Sunlight/Sunlight/bin/Debug/netstandard2.0/Sunlight.dll
+/Users/scott/code/playground/sunlight/Sunlight/Sunlight/Sunlight/bin/Debug/netstandard2.0/Sunlight.pdb
+/Users/scott/code/playground/sunlight/Sunlight/Sunlight/Sunlight/obj/Debug/netstandard2.0/Sunlight.csprojAssemblyReference.cache
+/Users/scott/code/playground/sunlight/Sunlight/Sunlight/Sunlight/obj/Debug/netstandard2.0/App.xaml.g.cs
+/Users/scott/code/playground/sunlight/Sunlight/Sunlight/Sunlight/obj/Debug/netstandard2.0/MainPage.xaml.g.cs
+/Users/scott/code/playground/sunlight/Sunlight/Sunlight/Sunlight/obj/Debug/netstandard2.0/Sunlight.csproj.CoreCompileInputs.cache
+/Users/scott/code/playground/sunlight/Sunlight/Sunlight/Sunlight/obj/Debug/netstandard2.0/Sunlight.AssemblyInfoInputs.cache
+/Users/scott/code/playground/sunlight/Sunlight/Sunlight/Sunlight/obj/Debug/netstandard2.0/Sunlight.AssemblyInfo.cs
+/Users/scott/code/playground/sunlight/Sunlight/Sunlight/Sunlight/obj/Debug/netstandard2.0/XamlC.stamp
+/Users/scott/code/playground/sunlight/Sunlight/Sunlight/Sunlight/obj/Debug/netstandard2.0/Sunlight.dll
+/Users/scott/code/playground/sunlight/Sunlight/Sunlight/Sunlight/obj/Debug/netstandard2.0/Sunlight.pdb
+/Users/scott/code/playground/sunlight/Sunlight/Sunlight/Sunlight/obj/Debug/netstandard2.0/HelloXaml.xaml.g.cs
+/Users/scott/code/playground/sunlight/Sunlight/Sunlight/Sunlight/obj/Debug/netstandard2.0/HelloGrid.xaml.g.cs

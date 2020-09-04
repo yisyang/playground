@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "dgSpecHash": "1IoS5jfq5Zzsd2cLKGM+IcWuyb5wqhXa6swJ3C0bVRpfay4nKjTIifOLY4iaLctPXSodfBcEKPWOsbUp79DNwg==",
+  "success": true,
+  "projectFilePath": "/Users/scott/code/playground/sunlight/Sunlight/Sunlight/Sunlight/Sunlight.csproj",
+  "expectedPackageFiles": [
+    "/Users/scott/.nuget/packages/microsoft.netcore.platforms/1.1.0/microsoft.netcore.platforms.1.1.0.nupkg.sha512",
+    "/Users/scott/.nuget/packages/netstandard.library/2.0.3/netstandard.library.2.0.3.nupkg.sha512",
+    "/Users/scott/.nuget/packages/newtonsoft.json/12.0.3/newtonsoft.json.12.0.3.nupkg.sha512",
+    "/Users/scott/.nuget/packages/system.buffers/4.5.1/system.buffers.4.5.1.nupkg.sha512",
+    "/Users/scott/.nuget/packages/system.collections.immutable/1.7.1/system.collections.immutable.1.7.1.nupkg.sha512",
+    "/Users/scott/.nuget/packages/system.memory/4.5.4/system.memory.4.5.4.nupkg.sha512",
+    "/Users/scott/.nuget/packages/system.numerics.vectors/4.4.0/system.numerics.vectors.4.4.0.nupkg.sha512",
+    "/Users/scott/.nuget/packages/system.runtime.compilerservices.unsafe/4.5.3/system.runtime.compilerservices.unsafe.4.5.3.nupkg.sha512",
+    "/Users/scott/.nuget/packages/xamarin.forms/4.8.0.1269/xamarin.forms.4.8.0.1269.nupkg.sha512"
+  ],
+  "logs": []
+}

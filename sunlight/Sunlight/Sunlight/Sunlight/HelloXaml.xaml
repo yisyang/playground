@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Sunlight.HelloXaml"
+             Title="Hello XAML Page">
+    <ContentPage.Content>
+        <StackLayout>
+            <Label Text="Hello, XAML!"
+                   VerticalOptions="CenterAndExpand"
+                   HorizontalTextAlignment="Center"
+                   Rotation="-15"
+                   IsVisible="true"
+                   FontSize="Large"
+                   FontAttributes="Bold"
+                   TextColor="Blue" />
+            
+            <Button Text="I'm a Button"
+                    HorizontalOptions="Center"
+                    VerticalOptions="CenterAndExpand" 
+                    Clicked="OnButtonClicked" />
+        </StackLayout>
+    </ContentPage.Content>
+</ContentPage>
