@@ -1,0 +1,3 @@
+[submodule "python/ALAE"]
+	path = python/ALAE
+	url = git@github.com:yisyang/ALAE.git
