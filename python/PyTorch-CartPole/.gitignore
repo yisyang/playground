@@ -1,0 +1,13 @@
+# IDE
+.idea
+
+# Cache
+__pycache__
+
+# Logs
+logs
+
+# Others
+*.DS_Store
+*.swp
+*.pyc
