@@ -1,0 +1,11 @@
+gym>=0.17.3
+ipython>=7.18.1
+matplotlib>=3.3.1
+numpy>=1.19.1
+Pillow>=7.2.0
+pyglet>=1.5.10
+PyOpenGL>=3.1.5
+PyOpenGL-accelerate>=3.1.5
+stable-baselines3>=0.10.0
+torch>=1.6.0
+torchvision>=0.7.0
