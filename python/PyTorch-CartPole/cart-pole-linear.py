@@ -165,10 +165,10 @@ def cart_pole():
             # Save reward.
             solver.remember_reward(reward)
 
-            if done:
-                score = step + 1
-                dimmed_score = 0.8 * dimmed_score + 0.2 * score
-                print(f"Run: {run}, score: {score}, dimmed_score: {dimmed_score}")
+            step_next = step + 1
+            if done or step_next == MAX_STEPS:
+                dimmed_score = 0.8 * dimmed_score + 0.2 * step_next
+                print(f"Run: {run}, score: {step_next}, dimmed_score: {dimmed_score}")
                 SCORES.append(step)
                 break
 

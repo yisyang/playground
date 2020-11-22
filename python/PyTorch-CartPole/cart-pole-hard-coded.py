@@ -1,9 +1,10 @@
 import gym
+import time
 
 SCORES = []
 RENDER_ON_SOLVED = True
 MAX_STEPS = 1000
-SOLVED_SCORE = 999
+SOLVED_SCORE = 996
 
 CYCLES = 1000
 
@@ -58,12 +59,15 @@ class HardCodedSolver:
 
 
 def cart_pole():
-    env = gym.make('CartPole-v1')
+    env = gym.make('gym_cartpole_foo:cartpole-foo-v0')
     env._max_episode_steps = MAX_STEPS
 
     solver = HardCodedSolver()
 
+    fps = env.metadata.get('video.frames_per_second') or 60
+
     run = 0
+    rendering = False
     dimmed_score = 0
     while run < CYCLES:
         # Reset environment and record the starting observation.
@@ -71,7 +75,10 @@ def cart_pole():
         step = 0
 
         while step < MAX_STEPS:
-            if RENDER_ON_SOLVED and dimmed_score > SOLVED_SCORE:
+            if not rendering and RENDER_ON_SOLVED and dimmed_score > SOLVED_SCORE:
+                rendering = True
+
+            if rendering:
                 env.render()
 
             # Pick action.
@@ -80,14 +87,17 @@ def cart_pole():
             # Step through environment using chosen action.
             observation, reward, done, info = env.step(action)
 
-            if done:
-                score = step + 1
-                dimmed_score = 0.8 * dimmed_score + 0.2 * score
-                print(f"Run: {run}, score: {score}, dimmed_score: {dimmed_score}")
+            step_next = step + 1
+            if done or step_next == MAX_STEPS:
+                dimmed_score = 0.8 * dimmed_score + 0.2 * step_next
+                print(f"Run: {run}, score: {step_next}, dimmed_score: {dimmed_score}")
                 SCORES.append(step)
                 break
 
             step += 1
+
+            if rendering:
+                time.sleep(1.0/fps)
 
         run += 1
 
