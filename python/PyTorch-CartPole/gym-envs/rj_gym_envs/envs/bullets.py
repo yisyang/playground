@@ -15,12 +15,12 @@ import random
 
 STATE_W = 100
 STATE_H = 100
-WINDOW_W = 800
-WINDOW_H = 800
+WINDOW_MARGIN = 10          # Invisible from display, bullets in margin are kept alive.
+WINDOW_DISPLAY_SCALE = 4    # Zoom, must be integer. Actual displayed window width is (STATE_W - MARGIN) * DISPLAY_SCALE
 
-FPS = 50                # Frames per second
+FPS = 50                    # Frames per second
 
-# FRICTION = 0.5          # 0 = infinite velocity, 1 = immobile
+# FRICTION = 0.5            # 0 = infinite velocity, 1 = immobile
 # ACCELERATION_SCALE = 1.0
 
 
@@ -79,7 +79,7 @@ class BulletsEnv(gym.Env):
     """
 
     metadata = {
-        'render.modes': ['human', 'state_pixels'],
+        'render.modes': ['human', 'rgb_array', 'state_pixels'],
         'video.frames_per_second': FPS
     }
 
@@ -99,11 +99,9 @@ class BulletsEnv(gym.Env):
         self.steps_beyond_done = None
         self.reward_twenty = 0
 
-        self.player_bullets = []
-        self.boss_bullets = []
         self.player_ship = PlayerShip(int((STATE_W - 1)/2), 9)
-        self.boss_ship = BossShipSkullyTrident(int((STATE_W - 1)/2), STATE_H - 11)
-        self.bullet_engine = BulletEngine()
+        self.boss_ship = BossShipSkullyTrident(int((STATE_W - 1)/2), STATE_H - 11, -1)
+        self.bullet_engine = BulletEngine(1, -1)
 
     # def seed(self, seed=None):
     #     self.np_random, seed = seeding.np_random(seed)
@@ -121,12 +119,14 @@ class BulletsEnv(gym.Env):
             # Firstly, let's obtain the player input and use it to move the player ship.
             self.player_ship.steer(action[0], action[1])
             # Do the same for the boss ship.
-            self.boss_ship.steer(random.randint(-1, 1), random.randint(-1, 1))
+            # self.boss_ship.steer(random.randint(-1, 1), random.randint(-1, 1))
+            self.boss_ship.steer(random.randint(-1, 2), 0)
+            # self.boss_ship.steer(0, 0)
 
-            # After ship movements are performed, we will move all existing bullets.
+            # After ship movements are performed, we will move all existing bullets and remove dead ones.
             self.bullet_engine.move_bullets()
 
-            # After all movements, we will charge/fire weapons and shields.
+            # After all ship and bullet movements, we will charge/fire weapons and shields.
             self.player_ship.charge_and_shoot(action[2], action[3], self.bullet_engine)
             self.boss_ship.charge_and_shoot(self.bullet_engine)
 
@@ -189,11 +189,15 @@ class BulletsEnv(gym.Env):
         return np.array(self.state)
 
     def render(self, mode='human'):
-        assert mode in ['human', 'state_pixels']
+        assert mode in ['human', 'rgb_array', 'state_pixels']
         if self.viewer is None:
-            self.viewer = rend.Viewer(WINDOW_W, WINDOW_H)
-            self.boss_ship_transform = rend.Transform()
-            self.player_ship_transform = rend.Transform()
+            self.viewer = rend.Viewer(STATE_W * WINDOW_DISPLAY_SCALE, STATE_H * WINDOW_DISPLAY_SCALE)
+            self.boss_ship_transform = rend.Transform(
+                    translation=(0, 0),
+                    scale=(WINDOW_DISPLAY_SCALE, WINDOW_DISPLAY_SCALE))
+            self.player_ship_transform = rend.Transform(
+                    translation=(0, 0),
+                    scale=(WINDOW_DISPLAY_SCALE, WINDOW_DISPLAY_SCALE))
             # TODO: Add score label
             # self.score_label = pyglet.text.Label('0000', font_size=36,
             #                                      x=20, y=WINDOW_H * 2.5 / 40.00, anchor_x='left', anchor_y='center',
@@ -202,30 +206,44 @@ class BulletsEnv(gym.Env):
             # Add ships to renderer
             boss_ship = self.boss_ship.get_poly_render()
             boss_ship.add_attr(self.boss_ship_transform)
+            boss_ship.set_color(0.8, 0.4, 0)
             player_ship = self.player_ship.get_poly_render()
             player_ship.add_attr(self.player_ship_transform)
-            self.boss_ship_transform = rend.Transform(translation=(self.boss_ship.x, self.boss_ship.y))
-            self.player_ship_transform = rend.Transform(translation=(self.player_ship.x, self.player_ship.y))
+            player_ship.set_color(0, 0.6, 1.0)
             self.viewer.add_geom(boss_ship)
             self.viewer.add_geom(player_ship)
 
         # Adjust rendered ship position to ship geoms
-        self.boss_ship_transform = rend.Transform(translation=(self.boss_ship.x, self.boss_ship.y))
-        self.player_ship_transform = rend.Transform(translation=(self.player_ship.x, self.player_ship.y))
+        self.boss_ship_transform.set_translation(self.boss_ship.x * WINDOW_DISPLAY_SCALE,
+                                                 self.boss_ship.y * WINDOW_DISPLAY_SCALE)
+        self.player_ship_transform.set_translation(self.player_ship.x * WINDOW_DISPLAY_SCALE,
+                                                   self.player_ship.y * WINDOW_DISPLAY_SCALE)
+
+        # Render player ship shield if necessary.
+        if self.player_ship.shield_duration > 0:
+            shield_geom = rend.make_circle(radius=5, filled=True)
+            bullet_geom.add_attr(
+                    rend.Transform(translation=tuple(np.array([bullet.x, bullet.y]) * WINDOW_DISPLAY_SCALE),
+                                   scale=(WINDOW_DISPLAY_SCALE, WINDOW_DISPLAY_SCALE)))
 
         # Add bullets to renderer
-        for bullet in self.player_bullets:
+        for bullet in self.bullet_engine.boss_bullets:
             bullet_geom = rend.make_circle(radius=1, filled=True)
-            bullet_geom.add_attr(rend.Transform(translation=(bullet.x, bullet.y)))
+            bullet_geom.add_attr(
+                    rend.Transform(translation=tuple(np.array([bullet.x, bullet.y]) * WINDOW_DISPLAY_SCALE),
+                                   scale=(WINDOW_DISPLAY_SCALE, WINDOW_DISPLAY_SCALE)))
+            bullet_geom.set_color(0.8, 0.2, 0)
             self.viewer.add_onetime(bullet_geom)
-        for bullet in self.boss_bullets:
+        for bullet in self.bullet_engine.player_bullets:
             bullet_geom = rend.make_circle(radius=1, filled=True)
-            bullet_geom.add_attr(rend.Transform(translation=(bullet.x, bullet.y)))
+            bullet_geom.add_attr(
+                    rend.Transform(translation=tuple(np.array([bullet.x, bullet.y]) * WINDOW_DISPLAY_SCALE),
+                                   scale=(WINDOW_DISPLAY_SCALE, WINDOW_DISPLAY_SCALE)))
+            bullet_geom.set_color(0, 0.2, 1.0)
             self.viewer.add_onetime(bullet_geom)
 
-        if mode == 'human':
-            # win.flip()
-            return self.viewer.isopen
+        if mode != 'state_pixels':
+            return self.viewer.render(return_rgb_array=mode == 'rgb_array')
 
         # Initialize state pixels
         state_pixels = np.zeros(shape=(STATE_W, STATE_H, 7), dtype=np.int16)
@@ -236,17 +254,17 @@ class BulletsEnv(gym.Env):
             state_pixels[xy[0]][xy[1]][0] = self.player_ship.hp
 
         # Add boss ship hp to state
-        ship_xy_data = self.boss_ship.get_xy_positions(flip_y=True)
+        ship_xy_data = self.boss_ship.get_xy_positions()
         for xy in ship_xy_data:
             state_pixels[xy[0]][xy[1]][1] = self.boss_ship.hp
 
         # Add player bullet hp to state
-        for bullet in self.player_bullets:
+        for bullet in self.bullet_engine.player_bullets:
             state_pixels[bullet.x][bullet.y][2] = bullet.hp
             state_pixels[bullet.x][bullet.y][3] = bullet.damage
 
         # Add boss bullet hp to state
-        for bullet in self.boss_bullets:
+        for bullet in self.bullet_engine.boss_bullets:
             state_pixels[bullet.x][bullet.y][4] = bullet.hp
             state_pixels[bullet.x][bullet.y][5] = bullet.damage
             state_pixels[bullet.x][bullet.y][6] = bullet.targetable
@@ -317,74 +335,15 @@ class BulletEngine:
     FLYING_PATTERN_SPREAD_9 = 82
     FLYING_PATTERN_HOMING = 90
 
-    def __init__(self):
+    def __init__(self, player_ship_y_direction=1, boss_ship_y_direction=-1):
         """
         :type self.player_bullets: [Bullet]
         :type self.boss_bullets: [Bullet]
         """
         self.player_bullets = []
         self.boss_bullets = []
-
-    def reset(self):
-        self.player_bullets = []
-        self.boss_bullets = []
-
-    def add_player_bullets(self, bullets):
-        if len(bullets) > 0:
-            self.player_bullets += bullets
-
-    def add_boss_bullets(self, bullets):
-        if len(bullets) > 0:
-            self.boss_bullets += bullets
-
-    @staticmethod
-    def create_bullet(x, y, damage_ratio=1, speed_ratio=5, flying_pattern=FLYING_PATTERN_STRAIGHT, targetable=False,
-                      hp=1, ttl=1000):
-        return Bullet(x, y, damage_ratio, speed_ratio, flying_pattern, targetable, hp, ttl)
-
-    def compute_player_ship_collision(self, player_ship):
-        [ship_damage, self.boss_bullets] = self.compute_ship_collision(player_ship, self.boss_bullets)
-        return ship_damage
-
-    def compute_boss_ship_collision(self, boss_ship):
-        [ship_damage, self.player_bullets] = self.compute_ship_collision(boss_ship, self.player_bullets)
-        return ship_damage
-
-    @staticmethod
-    def compute_ship_collision(ship, bullets):
-        """
-        Calculate damage to ship and remaining bullets based on their coords.
-
-        :param ship:
-        :param bullets:
-        :type ship: Ship
-        :type bullets: [Bullet]
-        :return:
-        """
-        ship_damage = 0
-        bullets_remaining = []
-        for bullet in bullets:
-            # Collide given ship against given bullets
-            if bullet.x == ship.x and bullet.y == ship.y:
-                ship_damage += bullet.damage
-            else:
-                bullets_remaining.append(bullet)
-
-        return [ship_damage, bullets_remaining]
-
-    def collide_targetable_bullets(self):
-        """
-        Calculate bullet cancellations between player and boss bullets.
-
-        :return:
-        """
-
-        # First eliminate targetable boss bullets.
-        [self.boss_bullets, self.player_bullets] = self.compute_bullet_collisions(self.boss_bullets,
-                                                                                  self.player_bullets)
-        # Next eliminate targetable player bullets.
-        [self.player_bullets, self.boss_bullets] = self.compute_bullet_collisions(self.player_bullets,
-                                                                                  self.boss_bullets)
+        self.player_ship_y_direction = player_ship_y_direction
+        self.boss_ship_y_direction = boss_ship_y_direction
 
     @staticmethod
     def compute_bullet_collisions(bullets_list_a, bullets_list_b):
@@ -428,31 +387,111 @@ class BulletEngine:
 
         return [bullets_list_a_remaining, bullets_list_b]
 
-    def move_bullets(self):
-        self.player_bullets = list(filter(lambda i: i.steps < i.ttl, self.player_bullets))
-        self.boss_bullets = list(filter(lambda i: i.steps < i.ttl, self.boss_bullets))
+    @staticmethod
+    def compute_ship_collision(ship, bullets):
+        """
+        Calculate damage to ship and remaining bullets based on their coords.
 
-        for pb in self.player_bullets:
-            pb.steps += 1
+        :param ship:
+        :param bullets:
+        :type ship: Ship
+        :type bullets: [Bullet]
+        :return:
+        """
+        ship_damage = 0
+        bullets_remaining = []
+        for bullet in bullets:
+            # Collide given ship against given bullets
+            if bullet.x == ship.x and bullet.y == ship.y:
+                ship_damage += bullet.damage
+            else:
+                bullets_remaining.append(bullet)
 
-            if pb.flying_pattern == BulletEngine.FLYING_PATTERN_STRAIGHT:
-                pb.y_actual += pb.speed_ratio / 20
-                pb.y = round(pb.y_actual)
+        return [ship_damage, bullets_remaining]
+
+    @staticmethod
+    def create_bullet(x, y, damage_ratio=1, speed_ratio=10, flying_pattern=FLYING_PATTERN_STRAIGHT, targetable=False,
+                      hp=1, ttl=1000):
+        return Bullet(x, y, damage_ratio, speed_ratio, flying_pattern, targetable, hp, ttl)
+
+    @staticmethod
+    def get_moved_bullets(bullets_list, y_direction=1):
+        bullets_list_moved = []
+        for bullet in bullets_list:
+            # Remove bullets past TTL.
+            if bullet.steps >= bullet.ttl:
+                continue
+
+            # Calculate new x/y.
+            bullet.steps += 1
+            if bullet.flying_pattern == BulletEngine.FLYING_PATTERN_STRAIGHT:
+                bullet.y_actual += y_direction * bullet.speed_ratio / 20
+                bullet.y = round(bullet.y_actual)
             else:
                 quit('Not implemented.')
 
+            # Remove bullets out of bounds.
+            if bullet.x < 0 or bullet.x >= STATE_W:
+                continue
+            if bullet.y < 0 or bullet.y >= STATE_H:
+                continue
+
+            bullets_list_moved.append(bullet)
+
+        return bullets_list_moved
+
+    def add_player_bullets(self, bullets):
+        if len(bullets) > 0:
+            self.player_bullets += bullets
+
+    def add_boss_bullets(self, bullets):
+        if len(bullets) > 0:
+            self.boss_bullets += bullets
+
+    def compute_player_ship_collision(self, player_ship):
+        [ship_damage, self.boss_bullets] = self.compute_ship_collision(player_ship, self.boss_bullets)
+        return ship_damage
+
+    def compute_boss_ship_collision(self, boss_ship):
+        [ship_damage, self.player_bullets] = self.compute_ship_collision(boss_ship, self.player_bullets)
+        return ship_damage
+
+    def collide_targetable_bullets(self):
+        """
+        Calculate bullet cancellations between player and boss bullets.
+
+        :return:
+        """
+
+        # First eliminate targetable boss bullets.
+        [self.boss_bullets, self.player_bullets] = self.compute_bullet_collisions(self.boss_bullets,
+                                                                                  self.player_bullets)
+        # Next eliminate targetable player bullets.
+        [self.player_bullets, self.boss_bullets] = self.compute_bullet_collisions(self.player_bullets,
+                                                                                  self.boss_bullets)
+
+    def move_bullets(self):
+        self.player_bullets = self.get_moved_bullets(self.player_bullets, self.player_ship_y_direction)
+        self.boss_bullets = self.get_moved_bullets(self.boss_bullets, self.boss_ship_y_direction)
+
+    def reset(self):
+        self.player_bullets = []
+        self.boss_bullets = []
+
 
 class Ship:
-    def __init__(self, x, y):
+    def __init__(self, x, y, y_direction=1):
+        assert y_direction in [1, -1]
         self.x_init = x
         self.y_init = y
+        self.y_direction = y_direction
         self.x_actual = self.x_init
         self.y_actual = self.y_init
         self.x = round(self.x_actual)
         self.y = round(self.y_actual)
         self.x_velocity = 0.0
         self.y_velocity = 0.0
-        self.weapon_delay = 12
+        self.weapon_delay = 50
         self.weapon_cooldown = 0
         self.max_hp = 10000
         self.hp = self.max_hp
@@ -547,8 +586,8 @@ class PlayerShip(Ship):
        # # # # # # #
          #   #   #
     """
-    def __init__(self, x, y):
-        super().__init__(x, y)
+    def __init__(self, x, y, y_direction=1):
+        super().__init__(x, y, y_direction)
         self.weapon_status = 0
         self.weapon_charged = 0
         self.shield_charged = 0
@@ -566,7 +605,7 @@ class PlayerShip(Ship):
         self.weapon_charged = 0
         self.shield_duration = 0
 
-    def get_xy_positions(self, flip_y=False):
+    def get_xy_positions(self):
         xy = [
             [0, 2],
             [-1, 1], [0, 1], [1, 1],
@@ -575,14 +614,17 @@ class PlayerShip(Ship):
             [-2, -2], [0, -2], [2, -2]
         ]
         xy = np.array(xy, dtype=np.int8)
-        if flip_y:
-            xy = xy * [1, -1]
+        # If direction is -1, ship is facing the other way in y direction.
+        if self.y_direction != 1:
+            xy = xy * [1, self.y_direction]
         xy += np.array([self.x, self.y], dtype=np.int8)
         return xy
 
-    def get_poly_render(self):
-        poly = rend.FilledPolygon([(-3, -1), (0, 2), (3, -1), (2, -2), (1, -1), (0, -2), (-1, -1), (-2, -2)])
-        poly.set_color(0, 0.6, 1.0)
+    def get_poly_render(self, scale=1):
+        xy = [(-3, -1), (0, 2), (3, -1), (2, -2), (1, -1), (0, -2), (-1, -1), (-2, -2)]
+        xy = np.array(xy, dtype=np.int8)
+        xy = xy * [scale, scale]
+        poly = rend.FilledPolygon(xy)
         return poly
 
     def charge_and_shoot(self, charge_weapon, charge_shield, bullet_engine):
@@ -627,44 +669,45 @@ class PlayerShip(Ship):
         :param bullet_engine: Env instantiated bullet engine to keep track of all bullets flying around.
         :type bullet_engine: BulletEngine
         """
+        yd = self.y_direction
         if self.weapon_charged >= 10:
             bullet_engine.add_player_bullets([
-                bullet_engine.create_bullet(x=self.x, y=self.y, damage_ratio=5),
-                bullet_engine.create_bullet(x=self.x - 1, y=self.y - 1, damage_ratio=5),
-                bullet_engine.create_bullet(x=self.x, y=self.y - 1, damage_ratio=5),
-                bullet_engine.create_bullet(x=self.x + 1, y=self.y - 1, damage_ratio=5)
+                bullet_engine.create_bullet(x=self.x, y=self.y + 2 * yd, damage_ratio=5),
+                bullet_engine.create_bullet(x=self.x - 1, y=self.y + yd, damage_ratio=5),
+                bullet_engine.create_bullet(x=self.x, y=self.y + yd, damage_ratio=5),
+                bullet_engine.create_bullet(x=self.x + 1, y=self.y + yd, damage_ratio=5)
             ])
         elif self.weapon_charged == 9:
             bullet_engine.add_player_bullets([
-                bullet_engine.create_bullet(x=self.x, y=self.y, damage_ratio=4),
-                bullet_engine.create_bullet(x=self.x - 1, y=self.y - 1, damage_ratio=4),
-                bullet_engine.create_bullet(x=self.x, y=self.y - 1, damage_ratio=3),
-                bullet_engine.create_bullet(x=self.x + 1, y=self.y - 1, damage_ratio=4)
+                bullet_engine.create_bullet(x=self.x, y=self.y + 2 * yd, damage_ratio=4),
+                bullet_engine.create_bullet(x=self.x - 1, y=self.y + yd, damage_ratio=4),
+                bullet_engine.create_bullet(x=self.x, y=self.y + yd, damage_ratio=3),
+                bullet_engine.create_bullet(x=self.x + 1, y=self.y + yd, damage_ratio=4)
             ])
         elif self.weapon_charged == 8:
             bullet_engine.add_player_bullets([
-                bullet_engine.create_bullet(x=self.x, y=self.y, damage_ratio=3),
-                bullet_engine.create_bullet(x=self.x - 1, y=self.y - 1, damage_ratio=3),
-                bullet_engine.create_bullet(x=self.x, y=self.y - 1, damage_ratio=3),
-                bullet_engine.create_bullet(x=self.x + 1, y=self.y - 1, damage_ratio=3)
+                bullet_engine.create_bullet(x=self.x, y=self.y + 2 * yd, damage_ratio=3),
+                bullet_engine.create_bullet(x=self.x - 1, y=self.y + yd, damage_ratio=3),
+                bullet_engine.create_bullet(x=self.x, y=self.y + yd, damage_ratio=3),
+                bullet_engine.create_bullet(x=self.x + 1, y=self.y + yd, damage_ratio=3)
             ])
         elif self.weapon_charged == 7:
             bullet_engine.add_player_bullets([
-                bullet_engine.create_bullet(x=self.x, y=self.y, damage_ratio=3),
-                bullet_engine.create_bullet(x=self.x - 1, y=self.y - 1, damage_ratio=3),
-                bullet_engine.create_bullet(x=self.x + 1, y=self.y - 1, damage_ratio=3)
+                bullet_engine.create_bullet(x=self.x, y=self.y + 2 * yd, damage_ratio=3),
+                bullet_engine.create_bullet(x=self.x - 1, y=self.y + yd, damage_ratio=3),
+                bullet_engine.create_bullet(x=self.x + 1, y=self.y + yd, damage_ratio=3)
             ])
         elif self.weapon_charged == 6:
             bullet_engine.add_player_bullets([
-                bullet_engine.create_bullet(x=self.x, y=self.y, damage_ratio=3),
-                bullet_engine.create_bullet(x=self.x - 1, y=self.y - 1, damage_ratio=2),
-                bullet_engine.create_bullet(x=self.x + 1, y=self.y - 1, damage_ratio=2)
+                bullet_engine.create_bullet(x=self.x, y=self.y + 2 * yd, damage_ratio=3),
+                bullet_engine.create_bullet(x=self.x - 1, y=self.y + yd, damage_ratio=2),
+                bullet_engine.create_bullet(x=self.x + 1, y=self.y + yd, damage_ratio=2)
             ])
         elif self.weapon_charged == 5:
             bullet_engine.add_player_bullets([
-                bullet_engine.create_bullet(x=self.x, y=self.y, damage_ratio=3),
-                bullet_engine.create_bullet(x=self.x - 1, y=self.y - 1, damage_ratio=1),
-                bullet_engine.create_bullet(x=self.x + 1, y=self.y - 1, damage_ratio=1)
+                bullet_engine.create_bullet(x=self.x, y=self.y + 2 * yd, damage_ratio=3),
+                bullet_engine.create_bullet(x=self.x - 1, y=self.y + yd, damage_ratio=1),
+                bullet_engine.create_bullet(x=self.x + 1, y=self.y + yd, damage_ratio=1)
             ])
         elif self.weapon_charged == 4:
             bullet_engine.add_player_bullets([
@@ -692,7 +735,7 @@ class PlayerShip(Ship):
             return
         self.weapon_cooldown = self.weapon_delay
         bullet_engine.add_player_bullets([
-            bullet_engine.create_bullet(x=self.x, y=self.y, damage_ratio=1)
+            bullet_engine.create_bullet(x=self.x, y=self.y + 2 * self.y_direction, damage_ratio=1)
         ])
 
     def clear_charges(self):
@@ -718,24 +761,25 @@ class BossShipSkullyTrident(Ship):
           v     # # #     v
                   v
     """
-    def __init__(self, x, y):
-        super().__init__(x, y)
+    def __init__(self, x, y, y_direction=1):
+        super().__init__(x, y, y_direction)
         self.ship_width = 11
         self.ship_height = 11
         self.ship_width_clearance = 10
-        self.weapon_delay = 10
+        self.weapon_delay = 50
 
     def reset(self):
         super().reset()
 
-    def get_poly_render(self):
-        poly = rend.FilledPolygon(
-                [(0, 5), (-3, 5), (-4, 4), (-4, 2), (-3, 1), (-5, 0), (-5, -3), (-4, -4), (-3, -3), (-2, 0), (-1, -4),
-                 (0, -5), (1, -4), (2, 0), (3, -3), (4, -4), (5, -3), (5, 0), (3, 1), (4, 2), (4, 4), (3, 5)])
-        poly.set_color(0.8, 0.4, 0)
+    def get_poly_render(self, scale=1):
+        xy = [(0, 5), (-3, 5), (-4, 4), (-4, 2), (-3, 1), (-5, 0), (-5, -3), (-4, -4), (-3, -3), (-2, 0), (-1, -4),
+              (0, -5), (1, -4), (2, 0), (3, -3), (4, -4), (5, -3), (5, 0), (3, 1), (4, 2), (4, 4), (3, 5)]
+        xy = np.array(xy, dtype=np.int8)
+        xy = xy * [scale, scale]
+        poly = rend.FilledPolygon(xy)
         return poly
 
-    def get_xy_positions(self, flip_y=False):
+    def get_xy_positions(self):
         xy = [[-3 + x, 5] for x in range(7)] + \
              [[-4 + x, 4] for x in range(9)] + \
              [[-4 + x, 3] for x in range(9)] + \
@@ -748,8 +792,9 @@ class BossShipSkullyTrident(Ship):
              [[-4, -4], [-1, -4], [0, -4], [1, -4], [4, -4]] + \
              [[0, -5]]
         xy = np.array(xy, dtype=np.int8)
-        if flip_y:
-            xy = xy * [1, -1]
+        # If direction is -1, ship is facing the other way in y direction.
+        if self.y_direction != 1:
+            xy = xy * [1, self.y_direction]
         xy += np.array([self.x, self.y], dtype=np.int8)
         return xy
 
@@ -760,10 +805,11 @@ class BossShipSkullyTrident(Ship):
             return
 
         self.weapon_cooldown = self.weapon_delay
+        yd = self.y_direction
         bullet_engine.add_boss_bullets([
-            bullet_engine.create_bullet(x=self.x, y=self.y + 5, damage_ratio=10),
-            bullet_engine.create_bullet(x=self.x - 4, y=self.y + 4, damage_ratio=10),
-            bullet_engine.create_bullet(x=self.x + 4, y=self.y + 4, damage_ratio=10)
+            bullet_engine.create_bullet(x=self.x, y=self.y + yd * 5, damage_ratio=10),
+            bullet_engine.create_bullet(x=self.x - 4, y=self.y + yd * 4, damage_ratio=10),
+            bullet_engine.create_bullet(x=self.x + 4, y=self.y + yd * 4, damage_ratio=10)
         ])
 
     def steer(self, x_acceleration, y_acceleration):
