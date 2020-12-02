@@ -6,6 +6,7 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
+click >= "7.1.2"
 gym = "*"
 numpy = "*"
 matplotlib = "*"

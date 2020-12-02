@@ -7,6 +7,9 @@ __pycache__
 # Logs
 logs
 
+# Trained net (too big)
+net/
+
 # Others
 *.DS_Store
 *.swp
