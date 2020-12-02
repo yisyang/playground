@@ -11,6 +11,9 @@ CYCLES = 1000
 
 # noinspection PyPep8Naming,DuplicatedCode
 class HardCodedSolver:
+    def __init__(self):
+        pass
+
     @staticmethod
     def predict(observation):
         # Observations:
@@ -59,7 +62,7 @@ class HardCodedSolver:
 
 
 def cart_pole():
-    env = gym.make('gym_cartpole_foo:cartpole-foo-v0')
+    env = gym.make('CartPole-v1')
     env._max_episode_steps = MAX_STEPS
 
     solver = HardCodedSolver()
