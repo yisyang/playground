@@ -1,3 +1,4 @@
+# noinspection DuplicatedCode
 """
 Plane vs. bullets env by Scott Yang.
 Based originally on gym cart-pole system implemented by Rich Sutton et al.
@@ -20,7 +21,7 @@ WINDOW_DISPLAY_SCALE = 4    # Zoom, must be integer. Actual displayed window wid
 FPS = 50                    # Frames per second
 
 
-class BulletsEnv(gym.Env):
+class BulletsSimpleEnv(gym.Env):
     """
     Description:
         An enemy boss ship is shooting bullets of constant velocity at the plane.
@@ -43,24 +44,13 @@ class BulletsEnv(gym.Env):
         5       Enemy Bullet Damage           0          40     x
 
     Actions:
-        Type:   MultiDiscrete([9, 2, 2])
-        Index   Representation                    Details
-        0       XY-Direction Acceleration         NOOP[0], U[1], UL[2], L[3], DL[4], D[5], DR[6], R[7], UR[8]
-        1       Charge Weapon                     NOOP[0], CHARGE_WEAPON[1]
-        2       Charge Shield                     NOOP[0], CHARGE_SHIELD[1]
-
-        Note:
-            Normal weapon deals 1 damage and fires every N frames.
-            Shield can be charged over 6+ normal weapon firings, to absorb all damage lasting for
-                [0.25, 0.5, 1, 2, 3, 4] weapon firings.
-            Weapon can be supercharged over 3+ normal firings, to deal
-                [2, 4, 8] damage in a single firing.
-                [2, 22, 2222]
+        Type:   Discrete(9)
+        Representation                      Details
+        XY-Direction Acceleration           NOOP[0], U[1], UL[2], L[3], DL[4], D[5], DR[6], R[7], UR[8]
 
     Reward: (When acting as player)
         Points  Awarded For
         +1.0    For each survived step.             (If player max HP = 1)
-        -1.0    For each damage taken by player.    (If player max HP > 1)
         +1.0    For each HP damage on boss.
 
     Starting State:
@@ -80,7 +70,7 @@ class BulletsEnv(gym.Env):
     }
 
     def __init__(self):
-        self.action_space = spaces.MultiDiscrete([9, 2, 2])
+        self.action_space = spaces.Discrete(9)
 
         self.observation_space = spaces.Box(low=0, high=40, shape=(STATE_W, STATE_H, 6), dtype=np.int16)
 
@@ -111,8 +101,11 @@ class BulletsEnv(gym.Env):
         """
         boss_ship_damage = 0
         if action is not None:
+            err_msg = "%r (%s) invalid" % (action, type(action))
+            assert self.action_space.contains(action), err_msg
+
             # Firstly, let's obtain the player input and use it to move the player ship.
-            self.player_ship.steer(action[0])
+            self.player_ship.steer(action)
 
             # Move boss ship randomly for now.
             if random.randint(0, 4) == 4:
@@ -125,7 +118,7 @@ class BulletsEnv(gym.Env):
             self.bullet_engine.move_bullets()
 
             # After all ship and bullet movements, we will charge/fire weapons and shields.
-            self.player_ship.charge_and_shoot(action[1], action[2], self.bullet_engine)
+            self.player_ship.charge_and_shoot(self.bullet_engine)
             self.boss_ship.charge_and_shoot(self.bullet_engine)
 
             # Finally, now that all the ships and bullets are in position, compute collision.
@@ -134,8 +127,7 @@ class BulletsEnv(gym.Env):
 
             # Deduct hp from ships.
             if player_ship_damage > 0:
-                if self.player_ship.shield_duration == 0:
-                    self.player_ship.hp = max(0, self.player_ship.hp - player_ship_damage)
+                self.player_ship.hp = max(0, self.player_ship.hp - player_ship_damage)
 
             if boss_ship_damage > 0:
                 self.boss_ship.hp = max(0, self.boss_ship.hp - boss_ship_damage)
@@ -216,39 +208,6 @@ class BulletsEnv(gym.Env):
         self.player_ship_transform.set_translation(self.player_ship.x * WINDOW_DISPLAY_SCALE,
                                                    self.player_ship.y * WINDOW_DISPLAY_SCALE)
 
-        # Render player ship shield if necessary.
-        if self.player_ship.shield_duration > 0:
-            shield_geom = rend.make_circle(radius=5, filled=False)
-            shield_geom.add_attr(
-                    rend.Transform(
-                        translation=tuple(np.array([self.player_ship.x, self.player_ship.y]) * WINDOW_DISPLAY_SCALE),
-                        scale=(WINDOW_DISPLAY_SCALE, WINDOW_DISPLAY_SCALE)))
-            if self.player_ship.shield_duration > 0.5 * self.player_ship.weapon_delay:
-                shield_geom.set_color(0, 0.5, 1.0)
-            else:
-                shield_geom.set_color(1.0, 0, 0)
-            self.viewer.add_onetime(shield_geom)
-
-        # Render play ship weapon charge status.
-        if self.player_ship.weapon_charging == 1:
-            weapon_level = min(3, math.floor(self.player_ship.weapon_charged / self.player_ship.weapon_delay))
-            charging_geom = rend.make_circle(radius=1, filled=True)
-            charging_geom.add_attr(rend.Transform(
-                    translation=tuple(
-                            np.array([self.player_ship.x,
-                                      self.player_ship.y + 2 * self.player_ship.y_direction]) * WINDOW_DISPLAY_SCALE),
-                    scale=(WINDOW_DISPLAY_SCALE, WINDOW_DISPLAY_SCALE)))
-            charging_geom.set_color(max(0, 1 - weapon_level), weapon_level / 3, weapon_level / 3)
-            self.viewer.add_onetime(charging_geom)
-        elif self.player_ship.shield_charging == 1:
-            shield_level = min(6, math.floor(self.player_ship.shield_charged / self.player_ship.weapon_delay))
-            charging_geom = rend.make_circle(radius=1, filled=True)
-            charging_geom.add_attr(rend.Transform(
-                translation=tuple(np.array([self.player_ship.x, self.player_ship.y]) * WINDOW_DISPLAY_SCALE),
-                scale=(WINDOW_DISPLAY_SCALE, WINDOW_DISPLAY_SCALE)))
-            charging_geom.set_color(max(0, 1 - shield_level), shield_level / 6, 0)
-            self.viewer.add_onetime(charging_geom)
-
         # Add bullets to renderer.
         for bullet in self.bullet_engine.boss_bullets:
             bullet_geom = rend.make_circle(radius=1, filled=True)
@@ -299,6 +258,7 @@ class BulletsEnv(gym.Env):
             self.viewer = None
 
 
+# noinspection DuplicatedCode
 class Bullet:
     """
     This is a 1 px bullet. (*)
@@ -333,6 +293,7 @@ class Bullet:
         self.steps = 0
 
 
+# noinspection DuplicatedCode
 class BulletEngine:
     # Simple straight patterns
     FLYING_PATTERN_STRAIGHT_LEFT = 4        # Note left is relative to the straight direction of traveling.
@@ -506,6 +467,7 @@ class BulletEngine:
         self.boss_bullets = []
 
 
+# noinspection DuplicatedCode
 class Ship:
     def __init__(self, x, y, y_direction=1):
         assert y_direction in [1, -1]
@@ -614,6 +576,7 @@ class Ship:
         return poly
 
 
+# noinspection DuplicatedCode
 class PlayerShip(Ship):
     """
     This is the player ship.
@@ -625,11 +588,6 @@ class PlayerShip(Ship):
     """
     def __init__(self, x, y, y_direction=1):
         super().__init__(x, y, y_direction)
-        self.weapon_charging = 0
-        self.shield_charging = 0
-        self.weapon_charged = 0
-        self.shield_charged = 0
-        self.shield_duration = 0
         self.max_hp = 1
         self.hp = 1
         self.ship_width = 7
@@ -639,9 +597,6 @@ class PlayerShip(Ship):
 
     def reset(self):
         super().reset()
-        self.shield_charged = 0
-        self.weapon_charged = 0
-        self.shield_duration = 0
 
     def get_poly_render(self, scale=1):
         xy_line = [(-3.5, -1), (0, 2.5), (3.5, -1),
@@ -676,24 +631,13 @@ class PlayerShip(Ship):
         return poly
 
     def get_xy_positions(self):
-        if self.shield_duration > 0:
-            xy = [[-1 + x, 4] for x in range(3)] + \
-                 [[-3 + x, 3] for x in range(7)] + \
-                 [[-3 + x, 2] for x in range(7)] + \
-                 [[-4 + x, 1] for x in range(9)] + \
-                 [[-4 + x, 0] for x in range(9)] + \
-                 [[-4 + x, -1] for x in range(9)] + \
-                 [[-3 + x, -2] for x in range(7)] + \
-                 [[-3 + x, -3] for x in range(7)] + \
-                 [[-1 + x, -4] for x in range(3)]
-        else:
-            xy = [
-                [0, 2],
-                [-1, 1], [0, 1], [1, 1],
-                [-2, 0], [-1, 0], [0, 0], [1, 0], [2, 0],
-                [-3, -1], [-2, -1], [-1, -1], [0, -1], [1, -1], [2, -1], [3, -1],
-                [-2, -2], [0, -2], [2, -2]
-            ]
+        xy = [
+            [0, 2],
+            [-1, 1], [0, 1], [1, 1],
+            [-2, 0], [-1, 0], [0, 0], [1, 0], [2, 0],
+            [-3, -1], [-2, -1], [-1, -1], [0, -1], [1, -1], [2, -1], [3, -1],
+            [-2, -2], [0, -2], [2, -2]
+        ]
         xy = np.array(xy, dtype=np.int8)
         # If direction is -1, ship is facing the other way in y direction.
         if self.y_direction != 1:
@@ -702,80 +646,13 @@ class PlayerShip(Ship):
         xy += np.array([self.x, self.y], dtype=np.int8)
         return xy
 
-    def charge_and_shoot(self, charge_weapon, charge_shield, bullet_engine):
+    def charge_and_shoot(self, bullet_engine):
         """
-        :param charge_weapon: Whether or not player has chosen to charge weapon.
-        :param charge_shield: Whether or not player has chosen to charge shield.
         :param bullet_engine: Env instantiated bullet engine to keep track of all bullets flying around.
         :type bullet_engine: BulletEngine
-
-        Notes:
-            Normal weapon deals 1 damage and fires every N frames.
-            Shield can be charged over 6+ normal weapon firings, to absorb all damage lasting for
-                [0.25, 0.5, 1, 2, 3, 4] weapon firings.
-            Weapon can be supercharged over 3+ normal firings, to deal
-                [2, 4, 8] damage in a single firing.
-                [2, 22, 2222]
         """
         self.weapon_cooldown -= 1
-        self.shield_duration = max(0, self.shield_duration - 1)
-
-        self.weapon_charging = 0
-        self.shield_charging = 0
-        if charge_weapon == 1:
-            self.weapon_charging = 1
-            self.weapon_charged += 1
-            if self.shield_charged >= self.weapon_delay:
-                self.activate_shield()
-            self.shield_charged = 0
-        elif charge_shield == 1:
-            self.shield_charging = 1
-            self.shield_charged += 1
-            if self.weapon_charged >= self.weapon_delay:
-                self.activate_mega_weapon(bullet_engine)
-            self.weapon_charged = 0
-        else:
-            if self.shield_charged >= self.weapon_delay:
-                self.activate_shield()
-            elif self.weapon_charged >= self.weapon_delay:
-                self.activate_mega_weapon(bullet_engine)
-            else:
-                self.activate_normal_weapon(bullet_engine)
-            self.clear_charges()
-
-    def activate_shield(self):
-        shield_level = min(6, math.floor(self.shield_charged / self.weapon_delay))
-        shield_effects = np.array([0, 0.25, 0.5, 1, 2, 3, 4]) * self.weapon_delay
-        self.shield_duration = shield_effects[shield_level]
-
-    def activate_mega_weapon(self, bullet_engine):
-        """
-        :param bullet_engine: Env instantiated bullet engine to keep track of all bullets flying around.
-        :type bullet_engine: BulletEngine
-        """
-        yd = self.y_direction
-        weapon_level = math.floor(self.weapon_charged / self.weapon_delay)
-        if weapon_level == 0:
-            return
-        if weapon_level >= 3:
-            bullet_engine.add_player_bullets([
-                bullet_engine.create_bullet(x=self.x, y=self.y + 2 * yd, damage_ratio=2, speed_ratio=40),
-                bullet_engine.create_bullet(x=self.x - 1, y=self.y + yd, damage_ratio=2, speed_ratio=40),
-                bullet_engine.create_bullet(x=self.x, y=self.y + yd, damage_ratio=2, speed_ratio=40),
-                bullet_engine.create_bullet(x=self.x + 1, y=self.y + yd, damage_ratio=2, speed_ratio=40)
-            ])
-        elif weapon_level == 2:
-            bullet_engine.add_player_bullets([
-                bullet_engine.create_bullet(x=self.x, y=self.y + 2 * yd, damage_ratio=2, speed_ratio=40),
-                bullet_engine.create_bullet(x=self.x, y=self.y + yd, damage_ratio=2, speed_ratio=40),
-            ])
-        elif weapon_level == 1:
-            bullet_engine.add_player_bullets([
-                bullet_engine.create_bullet(x=self.x, y=self.y + 2 * yd, damage_ratio=2, speed_ratio=40)
-            ])
-
-        # If mega weapon is fired, also require cooldown for normal weapon.
-        self.weapon_cooldown = self.weapon_delay
+        self.activate_normal_weapon(bullet_engine)
 
     def activate_normal_weapon(self, bullet_engine):
         """
@@ -789,11 +666,8 @@ class PlayerShip(Ship):
             bullet_engine.create_bullet(x=self.x, y=self.y + 2 * self.y_direction, damage_ratio=1, speed_ratio=20)
         ])
 
-    def clear_charges(self):
-        self.weapon_charged = 0
-        self.shield_charged = 0
 
-
+# noinspection DuplicatedCode
 class BossShipSkullyTrident(Ship):
     """
             # # # # # # #
@@ -861,6 +735,7 @@ class BossShipSkullyTrident(Ship):
         ])
 
 
+# noinspection DuplicatedCode
 class BossShipSkullyTridentLarge(Ship):
     """
                     # # # # # # #

@@ -22,7 +22,7 @@ def start(mode, n_envs, training_steps, delayed_start):
     human_mode = 'human'
     env_check_mode = 'check'
 
-    env_name = 'rj_gym_envs:bullets-v0'
+    env_name = 'rj_gym_envs:bullets-simple-v0'
 
     if mode in [training_mode, ai_play_mode]:
         if n_envs > 1:
@@ -35,7 +35,7 @@ def start(mode, n_envs, training_steps, delayed_start):
         model = A2C(MlpPolicy, env, learning_rate=0.005, verbose=1)
         if mode == ai_play_mode:
             model = A2C(MlpPolicy, env, verbose=1)
-            model.load("net/ppo_bullets")
+            model.load("net/ppo_bullets_simple")
 
             obs = env.reset()
             steps = 0
@@ -53,7 +53,7 @@ def start(mode, n_envs, training_steps, delayed_start):
                 print(f'Step: {steps}  Player HP: {env.player_ship.hp}  Boss HP: {env.boss_ship.hp}')
         else:
             model.learn(total_timesteps=training_steps)
-            model.save("net/ppo_bullets")
+            model.save("net/ppo_bullets_simple")
             print('Training complete.')
 
     elif mode == human_mode:
@@ -103,10 +103,6 @@ def handle_input(action_state):
         elif key_char == 's' or key == Key.down:
             action_state.y_down = 1
             action_state.y_action = 2
-        elif key_char == 'z' or key_char == 'j':
-            action_state.charge_weapon = 1
-        elif key_char == 'x' or key_char == 'k':
-            action_state.charge_shield = 1
 
     def on_release(key):
         try:
@@ -137,10 +133,6 @@ def handle_input(action_state):
                 action_state.y_action = 1
             else:
                 action_state.y_action = 0
-        elif key_char == 'z' or key_char == 'j':
-            action_state.charge_weapon = 0
-        elif key_char == 'x' or key_char == 'k':
-            action_state.charge_shield = 0
         if key == keyboard.Key.esc:
             # End game
             print('End')
@@ -179,12 +171,9 @@ def prompt_any_key():
 class ActionState:
     """
     Actions:
-        Type:   MultiDiscrete([9, 2, 2])
-        Index   Representation                    Details
-        0       XY-Direction Acceleration         NOOP[0], U[1], UL[2], L[3], DL[4], D[5], DR[6], R[7], UR[8]
-        1       Y-Direction Acceleration          NOOP[0], UP[1], DOWN[2]
-        1       Charge Weapon                     NOOP[0], CHARGE_WEAPON[1]
-        2       Charge Shield                     NOOP[0], CHARGE_SHIELD[1]
+        Type:   Discrete(9)
+        Representation                      Details
+        XY-Direction Acceleration           NOOP[0], U[1], UL[2], L[3], DL[4], D[5], DR[6], R[7], UR[8]
     """
     def __init__(self):
         self.x_action = 0
@@ -194,8 +183,6 @@ class ActionState:
         self.x_right = 0
         self.y_up = 0
         self.y_down = 0
-        self.charge_weapon = 0
-        self.charge_shield = 0
         self.terminate = False
 
     def to_array(self):
@@ -228,7 +215,7 @@ class ActionState:
                 self.xy_action = 5
             else:
                 self.xy_action = 0
-        return [self.xy_action, self.charge_weapon, self.charge_shield]
+        return self.xy_action
 
 
 if __name__ == '__main__':
