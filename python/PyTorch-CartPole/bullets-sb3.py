@@ -34,7 +34,6 @@ def start(mode, n_envs, training_steps, delayed_start):
 
         model = A2C(MlpPolicy, env, learning_rate=0.005, verbose=1)
         if mode == ai_play_mode:
-            model = A2C(MlpPolicy, env, verbose=1)
             model.load("net/ppo_bullets")
 
             obs = env.reset()

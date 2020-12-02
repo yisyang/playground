@@ -30,7 +30,7 @@ class BulletsSimpleEnv(gym.Env):
         Enemy boss ship can have powerful weapons firing in all directions.
 
     Observation:
-        Type:   Box(STATE_W, STATE_H, 6)  dtype=int16
+        Type:   Box(STATE_W, STATE_H, 4)  dtype=int8
         Relevance to training:                                  Dodge   Aim
         Box[0]: X                                               x       x
         Box[1]: Y                                               x       x
@@ -38,10 +38,8 @@ class BulletsSimpleEnv(gym.Env):
         Index   Representation              Min         Max
         0       Player Hit Box                0           1     x
         1       Enemy Hit Box                 0           1             x
-        2       Player Bullet HP              0           1             x
-        3       Player Bullet Damage          0           8             x
-        4       Enemy Bullet HP               0          40     x
-        5       Enemy Bullet Damage           0          40     x
+        2       Player Bullet Damage          0           8             x
+        3       Enemy Bullet Damage           0          40     x
 
     Actions:
         Type:   Discrete(9)
@@ -72,7 +70,7 @@ class BulletsSimpleEnv(gym.Env):
     def __init__(self):
         self.action_space = spaces.Discrete(9)
 
-        self.observation_space = spaces.Box(low=0, high=40, shape=(STATE_W, STATE_H, 6), dtype=np.int16)
+        self.observation_space = spaces.Box(low=0, high=40, shape=(STATE_W, STATE_H, 6), dtype=np.int8)
 
         # self.seed()
         self.state = None
@@ -86,7 +84,9 @@ class BulletsSimpleEnv(gym.Env):
         self.reward_twenty = 0
 
         self.player_ship = PlayerShip(int((STATE_W - 1)/2), 9)
-        self.boss_ship = BossShipSkullyTrident(int((STATE_W - 1)/2), STATE_H - 11, -1)
+        self.boss_ship = BossShipSkullyTrident(int((STATE_W - 1) / 2), STATE_H - 11, -1)
+        self.boss_ship_2 = BossShipSkullyTrident(11, STATE_H - 11, -1)
+        self.boss_ship_3 = BossShipSkullyTrident(STATE_W - 12, STATE_H - 11, -1)
         self.bullet_engine = BulletEngine(1, -1)
 
     # def seed(self, seed=None):
@@ -114,16 +114,32 @@ class BulletsSimpleEnv(gym.Env):
             else:
                 self.boss_ship.steer(self.boss_ship.prev_accel)
 
+            # if random.randint(0, 4) == 4:
+            #     movements = [0, 3, 7]
+            #     self.boss_ship_2.steer(movements[random.randint(0, 2)])
+            # else:
+            #     self.boss_ship_2.steer(self.boss_ship_2.prev_accel)
+            #
+            # if random.randint(0, 4) == 4:
+            #     movements = [0, 3, 7]
+            #     self.boss_ship_3.steer(movements[random.randint(0, 2)])
+            # else:
+            #     self.boss_ship_3.steer(self.boss_ship_3.prev_accel)
+
             # After ship movements are performed, we will move all existing bullets and remove dead ones.
             self.bullet_engine.move_bullets()
 
             # After all ship and bullet movements, we will charge/fire weapons and shields.
             self.player_ship.charge_and_shoot(self.bullet_engine)
             self.boss_ship.charge_and_shoot(self.bullet_engine)
+            self.boss_ship_2.charge_and_shoot(self.bullet_engine)
+            self.boss_ship_3.charge_and_shoot(self.bullet_engine)
 
             # Finally, now that all the ships and bullets are in position, compute collision.
             player_ship_damage = self.bullet_engine.compute_player_ship_collision(self.player_ship)
             boss_ship_damage = self.bullet_engine.compute_boss_ship_collision(self.boss_ship)
+            boss_ship_damage += self.bullet_engine.compute_boss_ship_collision(self.boss_ship_2)
+            boss_ship_damage += self.bullet_engine.compute_boss_ship_collision(self.boss_ship_3)
 
             # Deduct hp from ships.
             if player_ship_damage > 0:
@@ -142,7 +158,7 @@ class BulletsSimpleEnv(gym.Env):
 
         if not done:
             # reward = boss_ship_damage - player_ship_damage
-            reward = 1 + boss_ship_damage
+            reward = 1 + 5 * boss_ship_damage
         elif self.steps_beyond_done is None:
             # Just done
             self.steps_beyond_done = 0
@@ -179,78 +195,93 @@ class BulletsSimpleEnv(gym.Env):
 
     def render(self, mode='human'):
         assert mode in ['human', 'rgb_array', 'state_pixels']
-        if self.viewer is None:
-            self.viewer = rend.Viewer(STATE_W * WINDOW_DISPLAY_SCALE, STATE_H * WINDOW_DISPLAY_SCALE)
-            self.boss_ship_transform = rend.Transform(
-                    translation=(0, 0),
-                    scale=(1, 1))
-            self.player_ship_transform = rend.Transform(
-                    translation=(0, 0),
-                    scale=(1, 1))
-            # TODO: Add score label
-            # self.score_label = pyglet.text.Label('0000', font_size=36,
-            #                                      x=20, y=WINDOW_H * 2.5 / 40.00, anchor_x='left', anchor_y='center',
-            #                                      color=(255, 255, 255, 255))
 
-            # Add ships to renderer
-            boss_ship = self.boss_ship.get_poly_render(scale=WINDOW_DISPLAY_SCALE)
-            boss_ship.add_attr(self.boss_ship_transform)
-            boss_ship.set_color(0.8, 0.4, 0)
-            player_ship = self.player_ship.get_poly_render(scale=WINDOW_DISPLAY_SCALE)
-            player_ship.add_attr(self.player_ship_transform)
-            player_ship.set_color(0, 0.6, 1.0)
-            self.viewer.add_geom(boss_ship)
-            self.viewer.add_geom(player_ship)
+        if mode in ['human', 'rgb_array']:
+            if self.viewer is None:
+                self.viewer = rend.Viewer(STATE_W * WINDOW_DISPLAY_SCALE, STATE_H * WINDOW_DISPLAY_SCALE)
+                self.boss_ship_transform = rend.Transform(
+                        translation=(0, 0))
+                self.boss_ship_2_transform = rend.Transform(
+                        translation=(0, 0))
+                self.boss_ship_3_transform = rend.Transform(
+                        translation=(0, 0))
+                self.player_ship_transform = rend.Transform(
+                        translation=(0, 0),
+                        scale=(1, 1))
+                # TODO: Add score label
+                # self.score_label = pyglet.text.Label('0000', font_size=36,
+                #                                      x=20, y=WINDOW_H * 2.5 / 40.00, anchor_x='left', anchor_y='center',
+                #                                      color=(255, 255, 255, 255))
 
-        # Adjust rendered ship position to ship geoms.
-        self.boss_ship_transform.set_translation(self.boss_ship.x * WINDOW_DISPLAY_SCALE,
-                                                 self.boss_ship.y * WINDOW_DISPLAY_SCALE)
-        self.player_ship_transform.set_translation(self.player_ship.x * WINDOW_DISPLAY_SCALE,
-                                                   self.player_ship.y * WINDOW_DISPLAY_SCALE)
+                # Add ships to renderer
+                boss_ship = self.boss_ship.get_poly_render(scale=WINDOW_DISPLAY_SCALE)
+                boss_ship.add_attr(self.boss_ship_transform)
+                boss_ship.set_color(0.8, 0.4, 0)
+                boss_ship_2 = self.boss_ship_2.get_poly_render(scale=WINDOW_DISPLAY_SCALE)
+                boss_ship_2.add_attr(self.boss_ship_2_transform)
+                boss_ship_2.set_color(0.8, 0.4, 0)
+                boss_ship_3 = self.boss_ship_3.get_poly_render(scale=WINDOW_DISPLAY_SCALE)
+                boss_ship_3.add_attr(self.boss_ship_3_transform)
+                boss_ship_3.set_color(0.8, 0.4, 0)
+                player_ship = self.player_ship.get_poly_render(scale=WINDOW_DISPLAY_SCALE)
+                player_ship.add_attr(self.player_ship_transform)
+                player_ship.set_color(0, 0.6, 1.0)
+                self.viewer.add_geom(boss_ship)
+                self.viewer.add_geom(boss_ship_2)
+                self.viewer.add_geom(boss_ship_3)
+                self.viewer.add_geom(player_ship)
 
-        # Add bullets to renderer.
-        for bullet in self.bullet_engine.boss_bullets:
-            bullet_geom = rend.make_circle(radius=1, filled=True)
-            bullet_geom.add_attr(
-                    rend.Transform(translation=tuple(np.array([bullet.x, bullet.y]) * WINDOW_DISPLAY_SCALE),
-                                   scale=(WINDOW_DISPLAY_SCALE, WINDOW_DISPLAY_SCALE)))
-            bullet_geom.set_color(0.8, 0.2, 0)
-            self.viewer.add_onetime(bullet_geom)
-        for bullet in self.bullet_engine.player_bullets:
-            bullet_geom = rend.make_circle(radius=1, filled=True)
-            bullet_geom.add_attr(
-                    rend.Transform(translation=tuple(np.array([bullet.x, bullet.y]) * WINDOW_DISPLAY_SCALE),
-                                   scale=(WINDOW_DISPLAY_SCALE, WINDOW_DISPLAY_SCALE)))
-            bullet_geom.set_color(0, 0.2, 1.0)
-            self.viewer.add_onetime(bullet_geom)
+            # Adjust rendered ship position to ship geoms.
+            self.boss_ship_transform.set_translation(self.boss_ship.x * WINDOW_DISPLAY_SCALE,
+                                                     self.boss_ship.y * WINDOW_DISPLAY_SCALE)
+            self.boss_ship_2_transform.set_translation(self.boss_ship_2.x * WINDOW_DISPLAY_SCALE,
+                                                     self.boss_ship_2.y * WINDOW_DISPLAY_SCALE)
+            self.boss_ship_3_transform.set_translation(self.boss_ship_3.x * WINDOW_DISPLAY_SCALE,
+                                                     self.boss_ship_3.y * WINDOW_DISPLAY_SCALE)
+            self.player_ship_transform.set_translation(self.player_ship.x * WINDOW_DISPLAY_SCALE,
+                                                       self.player_ship.y * WINDOW_DISPLAY_SCALE)
 
-        if mode != 'state_pixels':
+            # Add bullets to renderer.
+            for bullet in self.bullet_engine.boss_bullets:
+                bullet_geom = rend.make_circle(radius=1, filled=True)
+                bullet_geom.add_attr(
+                        rend.Transform(translation=tuple(np.array([bullet.x, bullet.y]) * WINDOW_DISPLAY_SCALE),
+                                       scale=(WINDOW_DISPLAY_SCALE, WINDOW_DISPLAY_SCALE)))
+                bullet_geom.set_color(0.8, 0.2, 0)
+                self.viewer.add_onetime(bullet_geom)
+            for bullet in self.bullet_engine.player_bullets:
+                bullet_geom = rend.make_circle(radius=1, filled=True)
+                bullet_geom.add_attr(
+                        rend.Transform(translation=tuple(np.array([bullet.x, bullet.y]) * WINDOW_DISPLAY_SCALE),
+                                       scale=(WINDOW_DISPLAY_SCALE, WINDOW_DISPLAY_SCALE)))
+                bullet_geom.set_color(0, 0.2, 1.0)
+                self.viewer.add_onetime(bullet_geom)
+
             return self.viewer.render(return_rgb_array=mode == 'rgb_array')
 
-        # Initialize state pixels
-        state_pixels = np.zeros(shape=(STATE_W, STATE_H, 6), dtype=np.int16)
+        if mode == 'state_pixels':
+            # Initialize state pixels
+            state_pixels = np.zeros(shape=(STATE_W, STATE_H, 6), dtype=np.int8)
 
-        # Add player ship presence to state
-        ship_xy_data = self.player_ship.get_xy_positions()
-        for xy in ship_xy_data:
-            state_pixels[xy[0]][xy[1]][0] = 1
+            # Add player ship presence to state
+            ship_xy_data = self.player_ship.get_xy_positions()
+            for xy in ship_xy_data:
+                state_pixels[xy[0]][xy[1]][0] = 1
 
-        # Add boss ship presence to state
-        ship_xy_data = self.boss_ship.get_xy_positions()
-        for xy in ship_xy_data:
-            state_pixels[xy[0]][xy[1]][1] = 1
+            # Add boss ship presence to state
+            ship_xy_data = self.boss_ship.get_xy_positions()
+            for xy in ship_xy_data:
+                state_pixels[xy[0]][xy[1]][1] = 1
 
-        # Add player bullet hp to state
-        for bullet in self.bullet_engine.player_bullets:
-            state_pixels[bullet.x][bullet.y][2] = bullet.hp
-            state_pixels[bullet.x][bullet.y][3] = bullet.damage
+            # Add player bullet hp to state
+            for bullet in self.bullet_engine.player_bullets:
+                state_pixels[bullet.x][bullet.y][2] = bullet.damage
 
-        # Add boss bullet hp to state
-        for bullet in self.bullet_engine.boss_bullets:
-            state_pixels[bullet.x][bullet.y][4] = bullet.hp
-            state_pixels[bullet.x][bullet.y][5] = bullet.damage
+            # Add boss bullet hp to state
+            for bullet in self.bullet_engine.boss_bullets:
+                state_pixels[bullet.x][bullet.y][3] = bullet.damage
 
-        return state_pixels
+            return state_pixels
 
     def close(self):
         if self.viewer:

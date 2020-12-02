@@ -2,11 +2,8 @@ import click
 import gym
 from pynput import keyboard
 from pynput.keyboard import Key
-from stable_baselines3 import A2C
-from stable_baselines3.a2c import MlpPolicy
-# from stable_baselines3 import PPO
-# from stable_baselines3.ppo import MlpPolicy
-# from stable_baselines3.ppo import CnnPolicy
+from stable_baselines3 import DQN
+from stable_baselines3.dqn import MlpPolicy
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.env_checker import check_env
 
@@ -32,10 +29,9 @@ def start(mode, n_envs, training_steps, delayed_start):
             # Single env
             env = gym.make(env_name)
 
-        model = A2C(MlpPolicy, env, learning_rate=0.005, verbose=1)
+        model = DQN(MlpPolicy, env, learning_rate=0.005, verbose=1, buffer_size=200000, optimize_memory_usage=True)
         if mode == ai_play_mode:
-            model = A2C(MlpPolicy, env, verbose=1)
-            model.load("net/ppo_bullets_simple")
+            model.load("net/dqn_bullets_simple")
 
             obs = env.reset()
             steps = 0
@@ -50,10 +46,10 @@ def start(mode, n_envs, training_steps, delayed_start):
                 action, _states = model.predict(obs)
                 obs, rewards, done, info = env.step(action)
                 env.render()
-                print(f'Step: {steps}  Player HP: {env.player_ship.hp}  Boss HP: {env.boss_ship.hp}')
+                print(f'Step: {steps}  Player HP: {env.player_ship.hp}  Boss HP: {env.boss_ship.hp}  Reward: {rewards}')
         else:
             model.learn(total_timesteps=training_steps)
-            model.save("net/ppo_bullets_simple")
+            model.save("net/dqn_bullets_simple")
             print('Training complete.')
 
     elif mode == human_mode:
@@ -74,7 +70,7 @@ def start(mode, n_envs, training_steps, delayed_start):
             steps += 1
             obs, rewards, done, info = env.step(action_state.to_array())
             env.render()
-            print(f'Step: {steps}  Player HP: {env.player_ship.hp}  Boss HP: {env.boss_ship.hp}')
+            print(f'Step: {steps}  Player HP: {env.player_ship.hp}  Boss HP: {env.boss_ship.hp}  Reward: {rewards}')
 
     elif mode == env_check_mode:
         env = gym.make(env_name)

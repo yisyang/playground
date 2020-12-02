@@ -29,7 +29,7 @@ class BulletsEnv(gym.Env):
         Enemy boss ship can have powerful weapons firing in all directions.
 
     Observation:
-        Type:   Box(STATE_W, STATE_H, 6)  dtype=int16
+        Type:   Box(STATE_W, STATE_H, 6)  dtype=int8
         Relevance to training:                                  Dodge   Aim
         Box[0]: X                                               x       x
         Box[1]: Y                                               x       x
@@ -82,7 +82,7 @@ class BulletsEnv(gym.Env):
     def __init__(self):
         self.action_space = spaces.MultiDiscrete([9, 2, 2])
 
-        self.observation_space = spaces.Box(low=0, high=40, shape=(STATE_W, STATE_H, 6), dtype=np.int16)
+        self.observation_space = spaces.Box(low=0, high=40, shape=(STATE_W, STATE_H, 6), dtype=np.int8)
 
         # self.seed()
         self.state = None
@@ -269,7 +269,7 @@ class BulletsEnv(gym.Env):
             return self.viewer.render(return_rgb_array=mode == 'rgb_array')
 
         # Initialize state pixels
-        state_pixels = np.zeros(shape=(STATE_W, STATE_H, 6), dtype=np.int16)
+        state_pixels = np.zeros(shape=(STATE_W, STATE_H, 6), dtype=np.int8)
 
         # Add player ship presence to state
         ship_xy_data = self.player_ship.get_xy_positions()
