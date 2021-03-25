@@ -143,18 +143,20 @@ class BulletsEnv(gym.Env):
             # Also collide and eliminate targetable bullets.
             self.bullet_engine.collide_targetable_bullets()
 
-        done = bool(
-            self.player_ship.hp == 0
-            or self.boss_ship.hp == 0
-        )
+        lose = self.player_ship.hp == 0
+        win = self.boss_ship.hp == 0
+        done = win or lose
 
         if not done:
             # reward = boss_ship_damage - player_ship_damage
-            reward = 1 + boss_ship_damage
+            reward = 1 + 5 * boss_ship_damage
         elif self.steps_beyond_done is None:
             # Just done
             self.steps_beyond_done = 0
-            reward = 0.0
+            if win:
+                reward = 10
+            else:
+                reward = -10
         else:
             if self.steps_beyond_done == 0:
                 logger.warn(

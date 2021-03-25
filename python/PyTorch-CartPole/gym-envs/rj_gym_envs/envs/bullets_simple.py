@@ -151,10 +151,9 @@ class BulletsSimpleEnv(gym.Env):
             # Also collide and eliminate targetable bullets.
             self.bullet_engine.collide_targetable_bullets()
 
-        done = bool(
-            self.player_ship.hp == 0
-            or self.boss_ship.hp == 0
-        )
+        lose = self.player_ship.hp == 0
+        win = self.boss_ship.hp == 0
+        done = win or lose
 
         if not done:
             # reward = boss_ship_damage - player_ship_damage
@@ -162,7 +161,10 @@ class BulletsSimpleEnv(gym.Env):
         elif self.steps_beyond_done is None:
             # Just done
             self.steps_beyond_done = 0
-            reward = 0.0
+            if win:
+                reward = 10
+            else:
+                reward = -10
         else:
             if self.steps_beyond_done == 0:
                 logger.warn(
@@ -177,6 +179,7 @@ class BulletsSimpleEnv(gym.Env):
         self.steps_taken += 1
         self.reward_twenty = self.reward_twenty / 20 + reward
 
+        # For debugging
         logger.info(f'Steps taken: {self.steps_taken} Reward moving: {self.reward_twenty}')
 
         self.state = self.render("state_pixels")
